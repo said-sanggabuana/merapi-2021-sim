@@ -62,8 +62,8 @@ jobs:
           echo "No new wildfire anomalies detected for Mount Merapi."
         fi
       shell: bash
-      
-      - name: Send Discord Emergency Alert
+
+    - name: Send Discord Emergency Alert
       run: |
         # Check if the previous commit actually modified the GeoJSON file
         if git diff HEAD~1 HEAD --name-only | grep -E "data/.*\.geojson"; then
