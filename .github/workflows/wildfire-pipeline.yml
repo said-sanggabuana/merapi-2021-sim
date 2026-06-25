@@ -62,3 +62,16 @@ jobs:
           echo "No new wildfire anomalies detected for Mount Merapi."
         fi
       shell: bash
+      
+      - name: Send Discord Emergency Alert
+      run: |
+        # Check if the previous commit actually modified the GeoJSON file
+        if git diff HEAD~1 HEAD --name-only | grep -E "data/.*\.geojson"; then
+          curl -H "Content-Type: application/json" \
+               -d '{"content": "🚨 **CRITICAL WILDFIRE ALERT:** A verified multi-sensor burn scar has been detected at Mount Merapi. A new `merapi_burn_scar.geojson` payload has been committed to the repository. Review the dashboard immediately."}' \
+               ${{ secrets.DISCORD_WEBHOOK_URL }}
+          echo "[INFO] Emergency alert dispatched to Discord."
+        else
+          echo "[INFO] No new geospatial burn scars committed. Siren remains silent."
+        fi
+      shell: bash
