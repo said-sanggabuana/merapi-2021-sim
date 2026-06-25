@@ -1,0 +1,45 @@
+# Local environment variables, credentials, and data output
+.env
+data/*
+
+# Whitelist GitOps flat-file database workspace files
+!data/
+!data/.gitkeep
+!data/*.geojson
+
+# Python environment and cache
+venv/
+.venv/
+ENV/
+env/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# IDE and Project configuration
+.vscode/
+.idea/
+.project
+.pydevproject
+
+# Logs
+*.log

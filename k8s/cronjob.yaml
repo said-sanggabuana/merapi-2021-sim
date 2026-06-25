@@ -1,0 +1,46 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: wildfire-detector
+  namespace: default
+  labels:
+    app: wildfire-detector
+    gitops.io/sync: "true"
+spec:
+  schedule: "0 * * * *"  # Run hourly
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      template:
+        metadata:
+          labels:
+            app: wildfire-detector
+        spec:
+          restartPolicy: OnFailure
+          containers:
+          - name: detector
+            image: wildfire-detector:latest
+            imagePullPolicy: IfNotPresent
+            env:
+            - name: LOCAL_STORAGE_DIR
+              value: "/app/data"
+            - name: FIRE_DATA_COUNTRY
+              value: "USA"
+            - name: FIRE_DATA_SOURCE
+              value: "VIIRS_SNPP_NRT"
+            - name: MIN_CONFIDENCE
+              value: "nominal"
+            - name: NASA_FIRMS_MAP_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: firms-credentials
+                  key: nasa-firms-map-key
+            volumeMounts:
+            - name: data-volume
+              mountPath: /app/data
+          volumes:
+          - name: data-volume
+            persistentVolumeClaim:
+              claimName: wildfire-data-pvc

@@ -1,0 +1,42 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              110.4,
+              -7.6
+            ],
+            [
+              110.5,
+              -7.6
+            ],
+            [
+              110.5,
+              -7.52
+            ],
+            [
+              110.4,
+              -7.52
+            ],
+            [
+              110.4,
+              -7.6
+            ]
+          ]
+        ]
+      },
+      "properties": {
+        "detection_timestamp": "2021-02-05",
+        "burn_severity": "High",
+        "confidence_source": "S1_S2_FUSED",
+        "estimated_area_hectares": 57.2,
+        "severity_class": "High Severity Canopy Loss"
+      }
+    }
+  ]
+}

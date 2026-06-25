@@ -1,0 +1,64 @@
+name: Automated Wildfire Detection Pipeline
+
+on:
+  schedule:
+    - cron: '*/15 * * * *'  # Runs every 15 minutes
+  workflow_dispatch:      # Allows manual trigger
+
+jobs:
+  poll-and-validate:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write     # Required to push commits to the repository
+
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+        cache: 'pip'
+
+    - name: Install Dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+
+    - name: Earth Engine Headless Authentication Setup
+      run: |
+        if [ -n "${{ secrets.EARTHENGINE_TOKEN }}" ]; then
+          mkdir -p ~/.config/earthengine
+          echo "${{ secrets.EARTHENGINE_TOKEN }}" > ~/.config/earthengine/credentials
+          echo "[INFO] Earth Engine token successfully injected."
+        else
+          echo "[WARNING] EARTHENGINE_TOKEN secret is not set. Skipping EE authentication."
+        fi
+      shell: bash
+
+    - name: Run Wildfire Detection for Mount Merapi
+      env:
+        NASA_FIRMS_MAP_KEY: ${{ secrets.NASA_FIRMS_MAP_KEY }}
+      run: |
+        python run_pipeline.py
+
+    - name: Execute GeoJSON Schema & Geospatial Geofence Tests
+      run: |
+        pytest tests/ -v
+
+    - name: Execute GitOps Persistence Loop (Flat-File Commit Trick)
+      run: |
+        git config --global user.name "github-actions[bot]"
+        git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+        mkdir -p data
+        git add data/
+        
+        # Only commit and push if there are files in data/ to commit
+        if git status --porcelain | grep -E "data/.*\.geojson"; then
+          git commit -m "auto: record Mount Merapi wildfire anomalies [skip ci]"
+          git push
+        else
+          echo "No new wildfire anomalies detected for Mount Merapi."
+        fi
+      shell: bash

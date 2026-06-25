@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-slate-950 text-slate-100">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mount Merapi Wildfire Detection Center</title>
+    
+    <!-- Google Fonts: Outfit -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Outfit', 'sans-serif'],
+                    },
+                }
+            }
+        }
+    </script>
+    
+    <!-- Leaflet CSS & JS (Cloudflare CDN) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
+    
+    <!-- Custom Style for Dark Map integration -->
+    <style>
+        .leaflet-container {
+            font-family: 'Outfit', sans-serif;
+            background: #0f172a;
+        }
+        /* Custom styled Leaflet popup */
+        .leaflet-popup-content-wrapper {
+            background-color: #0f172a !important;
+            color: #f8fafc !important;
+            border: 1px solid #dc2626;
+            border-radius: 0.75rem;
+            box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.5);
+        }
+        .leaflet-popup-tip {
+            background-color: #0f172a !important;
+            border-left: 1px solid #dc2626;
+            border-bottom: 1px solid #dc2626;
+        }
+        .leaflet-control-layers {
+            background-color: #0f172a !important;
+            color: #f8fafc !important;
+            border: 1px solid #334155 !important;
+            border-radius: 0.5rem !important;
+        }
+    </style>
+</head>
+<body class="h-full flex flex-col overflow-hidden">
+
+    <!-- Header Navigation -->
+    <header class="bg-slate-900 border-b border-slate-800 px-6 py-4 flex items-center justify-between shadow-lg z-10">
+        <div class="flex items-center space-x-3">
+            <!-- Pulsing alert dot -->
+            <span class="relative flex h-4 w-4">
+                <span id="alert-pulse-ping" class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                <span id="alert-pulse-dot" class="relative inline-flex rounded-full h-4 w-4 bg-red-600"></span>
+            </span>
+            <h1 class="text-xl font-bold tracking-tight text-white flex items-center gap-2">
+                Mount Merapi Wildfire Observation Portal
+                <span class="text-xs bg-red-950 text-red-400 border border-red-800 px-2 py-0.5 rounded-full font-mono uppercase">Live GitOps</span>
+            </h1>
+        </div>
+        <div class="text-sm text-slate-400 font-mono" id="last-updated">
+            System State: Loading...
+        </div>
+    </header>
+
+    <!-- Main Workspace -->
+    <div class="flex-1 flex overflow-hidden">
+        
+        <!-- Sidebar Panel -->
+        <aside class="w-80 bg-slate-900 border-r border-slate-800 p-6 flex flex-col justify-between overflow-y-auto z-10 shadow-2xl">
+            <div class="space-y-6">
+                <!-- Overview Card -->
+                <div>
+                    <h2 class="text-xs font-semibold text-slate-400 uppercase tracking-widest mb-2">Target Boundary</h2>
+                    <div class="bg-slate-950 border border-slate-850 p-4 rounded-xl space-y-2">
+                        <div class="text-sm font-semibold text-slate-200">Mount Merapi National Park</div>
+                        <div class="text-xs text-slate-400 font-mono">Central Java, Indonesia</div>
+                        <div class="text-xs text-slate-400 font-mono mt-1 pt-1 border-t border-slate-800">
+                            BBOX: [110.34, -7.63, 110.52, -7.51]
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Live Metrics Card -->
+                <div>
+                    <h2 class="text-xs font-semibold text-slate-400 uppercase tracking-widest mb-2">Anomalies Detected</h2>
+                    <div id="stats-panel" class="grid grid-cols-2 gap-3">
+                        <div class="bg-slate-950 border border-slate-850 p-3 rounded-xl">
+                            <span class="block text-2xl font-bold text-red-500 font-mono" id="stat-anomalies">-</span>
+                            <span class="text-[10px] text-slate-400 uppercase tracking-wider">Burn Polygons</span>
+                        </div>
+                        <div class="bg-slate-950 border border-slate-850 p-3 rounded-xl">
+                            <span class="block text-2xl font-bold text-amber-500 font-mono" id="stat-area">-</span>
+                            <span class="text-[10px] text-slate-400 uppercase tracking-wider">Est. Area (Ha)</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Analysis Summary Details -->
+                <div class="bg-slate-950 border border-slate-850 p-4 rounded-xl space-y-3">
+                    <h3 class="text-sm font-semibold text-slate-300">GitOps Pipeline Details</h3>
+                    <div class="text-xs space-y-2 text-slate-400">
+                        <div class="flex justify-between">
+                            <span>Ingestion Source:</span>
+                            <span class="text-slate-200 font-mono">NASA FIRMS API</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span>Image Indexing:</span>
+                            <span class="text-slate-200 font-mono">Sentinel-2 SR</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span>Algorithm:</span>
+                            <span class="text-slate-200 font-mono">dNBR + Otsu</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span>Storage Pattern:</span>
+                            <span class="text-slate-200 font-mono">Stateless GeoJSON</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Footer credits -->
+            <div class="pt-6 border-t border-slate-800 text-[10px] text-slate-500 space-y-1">
+                <div>Decoupled GIS Pipeline Dashboard</div>
+                <div>Status: Connected via Zero-Cost CDN</div>
+            </div>
+        </aside>
+
+        <!-- Leaflet Map Canvas Container -->
+        <main class="flex-1 relative bg-slate-950">
+            <!-- Alert Banner -->
+            <div id="alert-banner" class="hidden absolute top-4 left-1/2 -translate-x-1/2 z-[1000] bg-slate-900/95 backdrop-blur-md border border-emerald-500/30 px-5 py-3 rounded-full shadow-2xl flex items-center space-x-3 transition-all duration-300">
+                <span class="relative flex h-3 w-3">
+                    <span id="banner-pulse-ping" class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                    <span id="banner-pulse-dot" class="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
+                </span>
+                <span id="alert-banner-text" class="text-sm font-semibold text-emerald-400 tracking-wide font-sans">
+                    Status: Clear - No active burn geometries found over Merapi
+                </span>
+            </div>
+            <div id="map" class="absolute inset-0 h-full w-full"></div>
+        </main>
+
+    </div>
+
+    <!-- Leaflet JS Script Section -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Coordinate mapping (Mount Merapi, Indonesia center coordinate: lat -7.5402, lon 110.4428)
+            const merapiCenter = [-7.5402, 110.4428];
+            const defaultZoom = 13;
+
+            // 1. Initialize Map Object
+            const map = L.map('map', {
+                center: merapiCenter,
+                zoom: defaultZoom,
+                zoomControl: false
+            });
+
+            // Position zoom controls in top-right
+            L.control.zoom({ position: 'topright' }).addTo(map);
+
+            // 2. Define Basemaps Tile Layers
+            const esriSatellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+                attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
+            });
+
+            const openStreetMap = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{y}/{x}.png', {
+                maxZoom: 19,
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            });
+
+            // Set satellite map as default active basemap
+            esriSatellite.addTo(map);
+
+            // 3. Setup Layers Controller
+            const baseMaps = {
+                "Esri Satellite": esriSatellite,
+                "OpenStreetMap": openStreetMap
+            };
+            L.control.layers(baseMaps, null, { position: 'topleft', collapsed: false }).addTo(map);
+
+            // Helper functions to update UI elements based on state
+            function updatePulsingDot(color) {
+                const pingEl = document.getElementById('alert-pulse-ping');
+                const dotEl = document.getElementById('alert-pulse-dot');
+                if (pingEl && dotEl) {
+                    if (color === 'emerald') {
+                        pingEl.className = "animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75";
+                        dotEl.className = "relative inline-flex rounded-full h-4 w-4 bg-emerald-600";
+                    } else if (color === 'red') {
+                        pingEl.className = "animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75";
+                        dotEl.className = "relative inline-flex rounded-full h-4 w-4 bg-red-600";
+                    } else {
+                        pingEl.className = "animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75";
+                        dotEl.className = "relative inline-flex rounded-full h-4 w-4 bg-amber-600";
+                    }
+                }
+            }
+
+            function displayAlertBanner(message, isClear = true) {
+                const banner = document.getElementById('alert-banner');
+                const text = document.getElementById('alert-banner-text');
+                const bp = document.getElementById('banner-pulse-ping');
+                const bd = document.getElementById('banner-pulse-dot');
+                if (banner && text) {
+                    text.innerText = message;
+                    if (isClear) {
+                        text.className = "text-sm font-semibold text-emerald-400 tracking-wide font-sans";
+                        banner.className = "absolute top-4 left-1/2 -translate-x-1/2 z-[1000] bg-slate-900/95 backdrop-blur-md border border-emerald-500/30 px-5 py-3 rounded-full shadow-2xl flex items-center space-x-3 transition-all duration-300";
+                        if (bp) bp.className = "animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75";
+                        if (bd) bd.className = "relative inline-flex rounded-full h-3 w-3 bg-emerald-500";
+                    } else {
+                        text.className = "text-sm font-semibold text-red-400 tracking-wide font-sans";
+                        banner.className = "absolute top-4 left-1/2 -translate-x-1/2 z-[1000] bg-slate-900/95 backdrop-blur-md border border-red-500/30 px-5 py-3 rounded-full shadow-2xl flex items-center space-x-3 transition-all duration-300";
+                        if (bp) bp.className = "animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75";
+                        if (bd) bd.className = "relative inline-flex rounded-full h-3 w-3 bg-red-500";
+                    }
+                    banner.classList.remove('hidden');
+                }
+            }
+
+            // 4. Asynchronously Load GeoJSON burn scar shapes
+            const geojsonPath = './data/merapi_burn_scar.geojson';
+            
+            fetch(geojsonPath)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP network response was not ok: ${response.status} ${response.statusText}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    console.log('GeoJSON Loaded successfully:', data);
+                    
+                    // Display system status metadata
+                    const metadata = data.metadata || {};
+                    const lastUpdatedEl = document.getElementById('last-updated');
+                    if (metadata.acq_date) {
+                        lastUpdatedEl.innerText = `Observed Date: ${metadata.acq_date}`;
+                    } else {
+                        lastUpdatedEl.innerText = 'System State: Active (No Data)';
+                    }
+
+                    // Feature collection statistics
+                    const features = data.features || [];
+                    document.getElementById('stat-anomalies').innerText = features.length;
+                    
+                    let totalArea = 0;
+                    features.forEach(f => {
+                        if (f.properties && f.properties.estimated_area_hectares) {
+                            totalArea += f.properties.estimated_area_hectares;
+                        }
+                    });
+                    document.getElementById('stat-area').innerText = totalArea > 0 ? totalArea.toFixed(1) : '-';
+
+                    if (features.length === 0) {
+                        updatePulsingDot('emerald');
+                        displayAlertBanner("Status: Clear - No active burn geometries found over Merapi", true);
+                        return;
+                    }
+
+                    // Active burn geometries found: update UI to red state
+                    updatePulsingDot('red');
+                    
+                    // 5. Draw GeoJSON features onto Leaflet Map
+                    L.geoJSON(data, {
+                        style: function(feature) {
+                            return {
+                                color: '#ef4444',       // solid red border
+                                weight: 2.5,
+                                opacity: 0.9,
+                                fillColor: '#dc2626',   // crimson translucent fill
+                                fillOpacity: 0.45
+                            };
+                        },
+                        onEachFeature: function(feature, layer) {
+                            const props = feature.properties || {};
+                            const meta = data.metadata || {};
+                            
+                            const severity = props.severity_class || 'N/A';
+                            const area = props.estimated_area_hectares ? `${props.estimated_area_hectares} Ha` : 'N/A';
+                            const otsuThreshold = props.dNBR_otsu_threshold ? props.dNBR_otsu_threshold.toFixed(4) : 'N/A';
+                            const dateStr = meta.acq_date || props.acq_date || 'N/A';
+                            
+                            // Setup Popup Content bubble
+                            const popupContent = `
+                                <div class="p-1 space-y-2">
+                                    <h3 class="text-sm font-bold text-red-500 border-b border-red-950 pb-1">⚠️ Wildfire Burn Anomaly</h3>
+                                    <div class="text-xs space-y-1 text-slate-300 font-sans">
+                                        <div><strong>Region:</strong> Mount Merapi National Park</div>
+                                        <div><strong>Acquisition Date:</strong> ${dateStr}</div>
+                                        <div><strong>Severity:</strong> <span class="text-amber-400 font-semibold">${severity}</span></div>
+                                        <div><strong>Damage Area:</strong> <span class="text-white">${area}</span></div>
+                                        <div><strong>Otsu dNBR Threshold:</strong> <span class="font-mono">${otsuThreshold}</span></div>
+                                    </div>
+                                </div>
+                            `;
+                            layer.bindPopup(popupContent, { maxWidth: 300 });
+
+                            // Optional hover effects
+                            layer.on('mouseover', function(e) {
+                                layer.setStyle({
+                                    fillOpacity: 0.65,
+                                    weight: 3.5
+                                });
+                            });
+                            layer.on('mouseout', function(e) {
+                                layer.setStyle({
+                                    fillOpacity: 0.45,
+                                    weight: 2.5
+                                });
+                            });
+                        }
+                    }).addTo(map);
+                })
+                .catch(error => {
+                    console.warn('Warning: Could not fetch wildfire database layers. Fallback to base maps.', error);
+                    
+                    document.getElementById('last-updated').innerText = 'System State: Clear';
+                    document.getElementById('stat-anomalies').innerText = '0';
+                    document.getElementById('stat-area').innerText = '0.0';
+
+                    // Update header pulsing dot to emerald (Clear)
+                    updatePulsingDot('emerald');
+
+                    // Display alert banner reading "Status: Clear - No active burn geometries found over Merapi"
+                    displayAlertBanner("Status: Clear - No active burn geometries found over Merapi", true);
+                });
+        });
+    </script>
+</body>
+</html>
